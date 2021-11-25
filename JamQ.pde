@@ -6,7 +6,7 @@ import processing.sound.*;
 import java.awt.MouseInfo;
 import java.awt.Point;
 
-public SoundFile firstAmbient,pipe,gettingWorse,walk,ending;
+public SoundFile firstAmbient,pipe,gettingWorse,ending;
 public Movie recallMovie;
 public Movie endingMovie;
 
@@ -22,19 +22,20 @@ final static int RUN = 1;
 
 PImage icon;
 
+void settings(){
+  fullScreen(P2D);
+}
+
 void setup() {
+  surface.setResizable(true);
   recallMovie = new Movie(this, "recall.mp4");
   endingMovie = new Movie(this, "ending.mp4");
-  fullScreen(P2D);
-  surface.setResizable(true);
-  //surface.setSize(int(1920*.5), int(1080*.5));
-  //surface.setLocation(displayWidth/2-int(1920*.5)/2, displayHeight/2-int(1080*.5)/2);
   icon = new PImage();
   for(int i = PFont.list().length-1; i > 0; i--){
     String temps = PFont.list()[i];
     if(temps.equals("굴림") || temps.equals("맑은 고딕")|| 
     temps.equals("돋움")|| temps.equals("함초롬바탕") ||
-    temps.equals("바탕") || temps.equals("궁서") ){
+    temps.equals("바탕") || temps.equals("궁서") || temps.equals("AppleGothic") || temps.equals("AppleMyungjo")){
       font = createFont(PFont.list()[i],48);
       break;
     }
@@ -54,18 +55,20 @@ void setup() {
 boolean init = true;
 void draw() {
   absmouse = MouseInfo.getPointerInfo().getLocation();
-   
+  
   if(init){
     icon = loadImage("jamQ.png");   
     
     firstAmbient = new SoundFile(this, "firstAmbient.wav");
     pipe = new SoundFile(this, "pipe.wav");
     gettingWorse = new SoundFile(this, "gettingWorse.wav");
-    walk = new SoundFile(this, "walk.wav");
     ending = new SoundFile(this, "ending.mp3");
     
+    endingMovie.jump(1);
+    endingMovie.pause();
+    recallMovie.jump(1);
+    recallMovie.pause();
     textSize(18);
-    
     init = false;
   }
   
@@ -75,7 +78,7 @@ void draw() {
 
   clear();
   debug(false);
-
+  
   switch(mode) {
     case(DEBUG):
       fill(255);
@@ -88,7 +91,6 @@ void draw() {
     break;
   }
 
-  toggleFadeIO();
   resetKeyState();
   adjustScreen();
   prevEndingMovieTime = curEndingMovieTime;
@@ -106,14 +108,13 @@ void draw() {
       "\n숫자 2키  -  (2번영상) 엔딩 영상 재생,,, 와ㅏㅎㅎ 끝.."+
       "\n숫자 4키  -  모든 영상 리셋.."+
       "\n클릭  -  커서 제거"+
-      "\n스페이스바  -  영상을 서서히 끄고 일시정지 / 다시 누르면 서서히 켜면서 재생"+
-      "\n                     *용도* 돌발상황에 일시정지, 원하는 위치에서 수동으로 페이드 인&아웃"+
-      "\nZ/X/C/V/B키  -  효과음 및 음악(순서는 스토리보드를 따름) / 다시 누르면 서서히 꺼짐(조건부)", 40, 70);
+      "\nR키  -  정지 토글 리셋"+
+      "\nZ/X/C/B키  -  효과음 및 음악(순서는 스토리보드를 따름) / 다시 누르면 서서히 꺼짐(조건부)", 40, 70);
     fill(0, 0);
     helpflag = false;
   }
   if(helpflag){
-    image(icon, width/2-this.width/14, height/2-this.height/8, this.width/7, this.height/4);
+    image(icon,width/2-this.width/16,height/2-this.height/8,this.width/7,this.height/4);
     fill(255);
     stroke(255);
     text("F12 : 도움말 보기", width/2-70, height/2+150+icon.height/12);
@@ -139,158 +140,61 @@ void draw() {
 
 int cursorCnt = 0;
 boolean helpflag = true;
+boolean xFlag = true;
+boolean zFlag = true;
+boolean cFlag = true;
+boolean vFlag = true;
+boolean bFlag = true;
 
 //-------------------------------------------soundManager------------------
-public AudioManager gettingWorseManager = new AudioManager("gettingWorse");
-public AudioManager firstAmbientManager = new AudioManager("firstAmbient");
-public AudioManager endingManager = new AudioManager("ending");
-public AudioManager walkManager = new AudioManager("walk");
-public AudioManager pipeManager = new AudioManager("pipe");
-
-void playSound(){
-  if(isZkeyReleased){//firstAmbient
-    firstAmbientManager.setVolVec();    
-    if(!firstAmbient.isPlaying())firstAmbient.play();
-  }
-  if(isXkeyReleased){//pipe
-    pipeManager.setVolVec();
-    if(!pipe.isPlaying())pipe.play();
-  }
-  if(isCkeyReleased){//gettingWorse
-    gettingWorseManager.setVolVec();
-    if(!gettingWorse.isPlaying())gettingWorse.play();
-  }
-  if(isVkeyReleased){//walk
-    walkManager.setVolVec();
-    if(!walk.isPlaying())walk.play();
-  }
-  if(isBkeyReleased){//ending
-    endingManager.setVolVec();
-    if(!ending.isPlaying())ending.play();
-  }
-  
-  if(gettingWorse.isPlaying())gettingWorseManager.updateVol();
-  if(firstAmbient.isPlaying())firstAmbientManager.updateVol();
-  if(ending.isPlaying())endingManager.updateVol();
-  if(walk.isPlaying())walkManager.updateVol();
-  if(pipe.isPlaying())pipeManager.updateVol();
+void selectPlayableMusic(SoundFile s){
+  if(s.isPlaying()){ s.jump(0); s.pause();}
+  else{ s.play();}
 }
 
-class AudioManager{
-  float dec = -0.01;
-  float inc = 0.01;
-  float volVec = 0.3;
-  float volume = 0;
-  boolean volVecToggle = true;
-  String filename;
-  
-  AudioManager(String a){
-    this.filename = a; 
-    if(this.filename == "pipe" || this.filename == "walk") volume = 1;
+void playSound(){
+  if(isZkeyReleased && zFlag){//firstAmbient
+    selectPlayableMusic(firstAmbient);
+    zFlag = false;
   }
-  
-  void updateVol(){
-    this.volume += volVec;
-    if(this.volume > 1){
-      this.volume = 1;
-    } else if(this.volume < 0){
-      this.volume = 0;
-      if(filename == "ending"){ ending.jump(0); ending.pause(); this.volVecToggle = true;}
-      else if(filename == "walk"){ walk.jump(0); walk.pause(); this.volVecToggle = true;}
-      else if(filename == "pipe"){ pipe.jump(0); pipe.pause(); this.volVecToggle = true;}
-      else if(filename == "gettingWorse"){ gettingWorse.jump(0); gettingWorse.pause(); this.volVecToggle = true;}
-      else if(filename == "firstAmbient"){ firstAmbient.jump(0); firstAmbient.pause(); this.volVecToggle = true;}
-    }
-
-    if(filename == "ending") ending.amp(this.volume);
-    else if(filename == "walk") walk.amp(this.volume);
-    else if(filename == "pipe") pipe.amp(1);
-    else if(filename == "gettingWorse") gettingWorse.amp(this.volume);
-    else if(filename == "firstAmbient") firstAmbient.amp(this.volume);
+  if(isXkeyReleased && xFlag){//pipe
+    selectPlayableMusic(pipe);
+    xFlag = false;
   }
-  
-  void setVolVec(){
-    if(this.volVecToggle){
-      volVec = inc;
-      this.volVecToggle = false;
-    } else {
-      volVec = dec;
-      this.volVecToggle = true;
-    }
+  if(isCkeyReleased && cFlag){//gettingWorse
+    selectPlayableMusic(gettingWorse);
+    cFlag = false;
+  }
+  if(isBkeyReleased && bFlag){//ending
+    selectPlayableMusic(ending);
+    bFlag = false;
   }
 }
 
 //-------------------------------------------movieManager------------------
 float globalMovieVolume = 1;
-float screenFadeOpac = 0;
 boolean fadeNutral = true;
 boolean fadeIO = false;
 boolean isTimeToRemoveBG = false;
 float dSoundFade = 0.03;
 float dScreenFade = 0.08;
 
-void toggleFadeIO() {
-  if (isSpacebarPressed) {
-    fadeNutral = false;
-    fadeIO = !fadeIO;
-  }
-  if (fadeNutral) {
-    screenFadeOpac = 255;
-    fadeIO = false;
-  } else {
-    if (fadeIO) {
-      globalMovieVolume = globalMovieVolume < 0.002 ? 0 : lerp(globalMovieVolume, 0, dSoundFade*2);
-      screenFadeOpac = 255*globalMovieVolume;
-      return;
-    } else {
-      globalMovieVolume = globalMovieVolume > 0.998 ? 1 : lerp(globalMovieVolume, 1, dSoundFade/4);
-      screenFadeOpac = 255*globalMovieVolume;
-      return;
-    }
-  }
-}
-
-float tempOpac = 0;
 void playMovie() {
   if (isNumOneKeyReleased) {
-    screenFadeOpac = 0;
+    endingMovie.jump(0);
     endingMovie.pause();
     recallMovie.jump(0);
-    endingMovie.jump(0);
     recallMovie.play();
   } else if (isNumTwoKeyReleased) {
-    screenFadeOpac = 0;
-    recallMovie.pause();
     recallMovie.jump(0);
+    recallMovie.pause();
     endingMovie.jump(0);
     endingMovie.play();
   } else if (isNumFourKeyReleased) {
-    screenFadeOpac = 0;
     recallMovie.jump(0);
-    endingMovie.jump(0);
     recallMovie.pause();
+    endingMovie.jump(0);
     endingMovie.pause();
-  }
-
-  tint(255, int(screenFadeOpac));
-  if (lastMovieRequested == "recall" && !isEndingMoviePlaying) {
-    if (screenFadeOpac == 0) {
-      recallMovie.pause();
-    } else {
-      if (tempOpac == 0) {
-        recallMovie.play();
-      }
-      image(recallMovie, 0, 0, width, height);
-    }
-  } else if (lastMovieRequested == "ending" && !isRecallMoviePlaying) {
-    if (screenFadeOpac == 0) {
-      endingMovie.pause();
-    } else {
-      if (tempOpac == 0) {
-        endingMovie.play();
-      }
-      image(endingMovie, 0, 0, width, height);
-    }
   }
 
   if (endingMovie.time() > endingMovie.duration() - 0.07) {
@@ -303,10 +207,12 @@ void playMovie() {
     recallMovie.pause();
     image(recallMovie, 0, 0, width, height);
   }
-
-  endingMovie.volume(globalMovieVolume);
-  recallMovie.volume(globalMovieVolume);
-  tempOpac = screenFadeOpac;
+  
+  if(isEndingMoviePlaying){
+    image(endingMovie, 0, 0, width, height);
+  }else if(isRecallMoviePlaying){
+    image(recallMovie, 0, 0, width, height);
+  }
 }
 
 boolean isEndingMoviePlaying = false;
@@ -339,7 +245,6 @@ void movieEvent(Movie m) {
 
 //-------------------------------------------KeyEvents------------------------------
 boolean isKeyF12Pressed = false; // for tutorial
-boolean isSpacebarPressed = false;
 boolean isNumZeroKeyReleased = false;
 boolean isNumOneKeyReleased = false;
 boolean isNumTwoKeyReleased = false;
@@ -366,9 +271,6 @@ String lastMovieRequested = "None";
 
 void keyReleased() {
   helpflag = false;
-  if (key == 32/*spacebar*/) {
-    isSpacebarPressed = true;
-  }
 
   //play recall movie
   if (key == '1') {
@@ -384,11 +286,6 @@ void keyReleased() {
   if (key == '4') {
     isNumFourKeyReleased = true;
     lastMovieRequested = "bgblack";
-  }
-
-  //rewind every video to top & stop every video
-  if (key == '0') {
-    isNumZeroKeyReleased = true;
   }
 
   if (key == 'f' || key == 'F') {
@@ -411,11 +308,6 @@ void keyReleased() {
     Ctoggle = !Ctoggle;
   }
   
-  if(key == 'v' || key == 'V'){ // walk
-    isVkeyReleased = true;
-    Vtoggle = !Vtoggle;
-  }
-  
   if(key == 'b' || key == 'B'){ // ending
     isBkeyReleased = true;
     Btoggle = !Btoggle;
@@ -436,7 +328,6 @@ void resetKeyState() {
   isNumOneKeyReleased = false;
   isNumTwoKeyReleased = false;
   isNumFourKeyReleased = false;
-  isSpacebarPressed = false;
   isLeftKeyPressed = false;
   isRightKeyPressed = false;
   isZkeyReleased = false;
@@ -466,6 +357,14 @@ public void keyPressed() {
   if (key == RIGHT) {
     isRightKeyPressed = true;
   }
+  
+  if (key == 'R' || key == 'r'){
+    zFlag = true;
+    xFlag = true;
+    cFlag = true;
+    vFlag = true;
+    bFlag = true;
+  }
 }
 
 
@@ -480,9 +379,7 @@ void debug(boolean j){
     println("recall : "+isRecallMoviePlaying);
     println("ending : "+isEndingMoviePlaying);
     println("lastMovieRequested : "+lastMovieRequested);
-    println("screenFadeOpac : "+screenFadeOpac);
     println("one : "+isNumOneKeyReleased);
-    println("fadeOpac : "+screenFadeOpac);
     println("MovieVolume : "+globalMovieVolume);
     println("fadeNutral : "+fadeNutral);
     println("_________________________");
